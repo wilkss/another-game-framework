@@ -1,0 +1,21 @@
+#version 330 core
+
+in vec2 uv;
+
+uniform sampler2D u_ColorTexture;
+uniform sampler2D u_LightAccumulationTexture;
+uniform sampler2D u_DepthTexture;
+
+layout (location = 0) out vec4 out_Color;
+
+void main()
+{
+	float depth = texture(u_DepthTexture, uv).r;
+	if (depth == 1.0)
+		discard;
+
+	vec3 color = texture(u_ColorTexture, uv).rgb;
+	vec3 lightAccumulation = texture(u_LightAccumulationTexture, uv).rgb;
+	vec3 result = color * lightAccumulation;
+	out_Color = vec4(result, 1.0);
+}

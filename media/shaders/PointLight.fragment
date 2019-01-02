@@ -1,0 +1,56 @@
+#version 330 core
+
+in vec2 uv;
+
+struct Attenuation
+{
+	float constant;
+	float linear;
+	float quadratic;
+};
+
+uniform sampler2D u_NormalTexture;
+uniform sampler2D u_DepthTexture;
+uniform samplerCube u_ShadowMapTexture;
+
+uniform mat4 u_InverseViewProjectionMatrix;
+
+uniform vec3 u_LightPosition;
+uniform vec3 u_LightColor;
+
+uniform Attenuation u_Attenuation;
+
+uniform float u_ShadowDistance;
+
+layout (location = 0) out vec4 out_Color;
+
+vec3 ReconstructWorldPosFromDepth(float depth)
+{
+	float z = depth * 2.0 - 1.0;
+	vec4 clipSpacePosition = vec4(uv * 2.0 - 1.0, z, 1.0);
+	vec4 worldSpacePosition = u_InverseViewProjectionMatrix * clipSpacePosition;
+	worldSpacePosition = worldSpacePosition / worldSpacePosition.w;
+	return worldSpacePosition.xyz;
+}
+
+void main()
+{
+	vec3 normal = texture(u_NormalTexture, uv).rgb;
+	float depth = texture(u_DepthTexture, uv).r;
+	vec3 fragPos = ReconstructWorldPosFromDepth(depth);
+
+	vec3 lightDir = normalize(u_LightPosition - fragPos);
+	float NdotL = max(dot(normal, lightDir), 0.0);
+	float distance = length(u_LightPosition - fragPos);
+	float attenuation = 1.0 / (u_Attenuation.constant + u_Attenuation.linear * distance + u_Attenuation.quadratic * (distance * distance));
+
+	vec3 fragToLight = fragPos - u_LightPosition;
+	float closestDepth = texture(u_ShadowMapTexture, fragToLight).r;
+	closestDepth *= u_ShadowDistance;
+	float currentDepth = length(fragToLight);
+	float bias = 0.05;
+	float shadowFactor = currentDepth - bias > closestDepth ? 0.1 : 1.0;
+
+	vec3 result = vec3(0.1) + (u_LightColor * NdotL * attenuation * shadowFactor);
+	out_Color = vec4(result, 1.0);
+}

@@ -1,0 +1,23 @@
+#version 330 core
+
+in vec2 uv;
+in vec3 normal;
+
+uniform sampler2D u_AlbedoMap;
+uniform bool u_HasAlbedoMap;
+
+uniform vec3 u_Albedo;
+
+layout (location = 0) out vec4 out_Color;
+layout (location = 1) out vec4 out_Normal;
+
+void main()
+{
+	vec3 albedo = u_Albedo;
+
+	if (u_HasAlbedoMap)
+		albedo *= texture(u_AlbedoMap, uv).rgb;
+
+	out_Color = vec4(albedo, 1.0);
+	out_Normal = vec4(normalize(normal), 0.0);
+}
